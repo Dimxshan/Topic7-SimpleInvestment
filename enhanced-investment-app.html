@@ -170,15 +170,14 @@
     </div>
 
     <script>
-        // Data structures to mirror the Go code
         class Asset {
             constructor(name, price, quantity = 0, totalPrice = 0, purchasePrice = null) {
                 this.name = name;
                 this.price = price;
                 this.quantity = quantity;
                 this.totalPrice = totalPrice;
-                this.purchasePrice = purchasePrice || price; // Default to current price if not provided
-                this.nav = quantity * price; // Net Asset Value
+                this.purchasePrice = purchasePrice || price; 
+                this.nav = quantity * price; 
             }
 
             getRoi() {
@@ -188,34 +187,30 @@
             }
         }
 
-        // New Transaction class to store transaction history
         class Transaction {
             constructor(type, assetName, quantity, price, totalValue, date = new Date()) {
-                this.type = type; // 'buy' or 'sell'
+                this.type = type; 
                 this.assetName = assetName;
                 this.quantity = quantity;
                 this.price = price;
                 this.totalValue = totalValue;
                 this.date = date;
-                this.currentPrice = price; // Initially set to purchase/sell price
-                this.sellPrice = null; // For 'buy' transactions that are later sold
-                this.pnl = 0; // Profit/Loss
-                this.roi = 0; // ROI percentage
+                this.currentPrice = price; 
+                this.sellPrice = null; 
+                this.pnl = 0; 
+                this.roi = 0; 
             }
 
-            // Update the current price (for buy transactions that are still held)
             updateCurrentPrice(price) {
                 this.currentPrice = price;
                 this.updatePnL();
             }
 
-            // Set the sell price (for buy transactions that are sold)
             setSellPrice(price) {
                 this.sellPrice = price;
                 this.updatePnL();
             }
 
-            // Update P&L and ROI calculations
             updatePnL() {
                 if (this.type === 'buy') {
                     const finalPrice = this.sellPrice || this.currentPrice;
@@ -223,8 +218,6 @@
                     this.pnl = finalValue - this.totalValue;
                     this.roi = (this.pnl / this.totalValue) * 100;
                 } else if (this.type === 'sell') {
-                    // For sell transactions, P&L and ROI are calculated based on the referenced buy transaction
-                    // This will be handled separately
                 }
             }
         }
@@ -233,8 +226,8 @@
             constructor(balance = 0) {
                 this.balance = balance;
                 this.assets = new Map();
-                this.transactions = []; // Add transactions array to store history
-                this.initialBalance = balance; // Keep track of initial balance
+                this.transactions = []; 
+                this.initialBalance = balance; 
             }
 
             buyAsset(name, quantity, price, purchasePrice = null) {
@@ -255,7 +248,6 @@
                     asset.quantity += quantity;
                     asset.totalPrice += totalPrice;
                     
-                    // Calculate weighted average purchase price
                     const weightedAvgPrice = asset.totalPrice / asset.quantity;
                     asset.purchasePrice = weightedAvgPrice;
                     
@@ -264,7 +256,6 @@
                     this.assets.set(name, new Asset(name, price, quantity, totalPrice, actualPurchasePrice));
                 }
                 
-                // Add transaction to history
                 const transaction = new Transaction('buy', name, quantity, actualPurchasePrice, totalPrice);
                 this.transactions.push(transaction);
                 
@@ -283,24 +274,18 @@
                 
                 const asset = this.assets.get(name);
                 
-                // Create sell transaction
                 const sellTransaction = new Transaction('sell', name, quantity, price, totalPrice);
                 
-                // Find matching buy transactions to calculate P&L for this sale
-                // We'll use FIFO (First In, First Out) method for accounting
                 let remainingToSell = quantity;
                 let totalCostBasis = 0;
                 
-                // Filter buy transactions for this asset that still have quantity available
                 const buyTransactions = this.transactions.filter(t => 
                     t.type === 'buy' && t.assetName === name && 
                     (t.quantity > 0)
                 );
                 
-                // Store buy transactions that were fully or partially sold in this transaction
                 const soldBuyTransactions = [];
                 
-                // Update buy transactions
                 for (const buyTx of buyTransactions) {
                     if (remainingToSell <= 0) break;
                     
@@ -308,11 +293,9 @@
                     const costBasis = sellFromThis * buyTx.price;
                     totalCostBasis += costBasis;
                     
-                    // Calculate P&L for this specific buy transaction
                     const buyProfit = (price - buyTx.price) * sellFromThis;
                     const buyRoi = (buyTx.price > 0) ? ((price - buyTx.price) / buyTx.price) * 100 : 0;
                     
-                    // Create a reference to original transaction 
                     soldBuyTransactions.push({
                         transaction: buyTx,
                         soldQuantity: sellFromThis,
@@ -320,11 +303,8 @@
                         roi: buyRoi
                     });
                     
-                    // Update the buy transaction
                     buyTx.quantity -= sellFromThis;
                     
-                    // Only set sellPrice if fully sold (quantity is now 0)
-                    // For partially sold transactions, we'll handle differently
                     if (buyTx.quantity === 0) {
                         buyTx.setSellPrice(price);
                         buyTx.pnl = buyProfit;
